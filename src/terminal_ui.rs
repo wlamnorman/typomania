@@ -47,12 +47,12 @@ impl TextCursor {
     }
 
     fn previous(&mut self) -> (u16, u16) {
-        let text_line = &self.text_lines[self.curr_text_line];
         if self.curr_char_idx > 0 {
             self.curr_char_idx -= 1;
         } else if self.curr_text_line > 0 {
             self.curr_text_line -= 1;
-            self.curr_char_idx = text_line.length;
+            let text_line = &self.text_lines[self.curr_text_line];
+            self.curr_char_idx = text_line.length - 1;
         }
         self.current()
     }
@@ -66,7 +66,7 @@ pub(crate) struct TerminalUI {
 }
 
 impl TerminalUI {
-    pub(crate) fn new(words: &Vec<String>) -> Self {
+    pub(crate) fn new(words: &[String]) -> Self {
         let (w, h) = terminal_size().expect("Failed to get terminal size");
 
         let mut terminal_ui = Self {
@@ -95,11 +95,11 @@ impl TerminalUI {
             })
     }
 
-    pub(crate) fn reinitialize(&mut self, words: &Vec<String>) {
+    pub(crate) fn reinitialize(&mut self, words: &[String]) {
         self.clear_screen();
         self.text_cur_pos = TextCursor::default();
 
-        let text_lines = self.build_text_lines(&words);
+        let text_lines = self.build_text_lines(words);
         self.text_cur_pos.text_lines = text_lines;
 
         self.display_text_to_type();
@@ -110,7 +110,7 @@ impl TerminalUI {
         self.flush();
     }
 
-    fn build_text_lines(&self, words: &Vec<String>) -> Vec<TextLine> {
+    fn build_text_lines(&self, words: &[String]) -> Vec<TextLine> {
         let text_vec = self.build_vec_of_text(words);
         let center_x = self.term_width / 2;
         let center_y = self.term_height / 2;

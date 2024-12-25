@@ -6,7 +6,7 @@ const OS_LEXICON_PATH: &str = "/usr/share/dict/words";
 #[clap(version)]
 pub(crate) struct Input {
     /// Number of words to generate
-    #[arg(short, long, default_value_t = 25)]
+    #[arg(short, long, default_value_t = 12)]
     pub(crate) number_of_words: usize,
 
     /// Optional seed for re-trying the same set of words
