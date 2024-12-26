@@ -277,7 +277,7 @@ impl TerminalUI {
         let n_fucks_given = results.n_typos as i16 - incorrect_chars_at_end as i16;
 
         let main_line = format!(
-           "You mangaged to type {} characters in {} seconds with {}% errors and {} number of fucks given about typos!",
+           "You mangaged to type {} characters in {} seconds with {}% end of test errors and gave {} number of fucks given about typos!",
             results.n_chars_typed, seconds_elapsed, accuracy, n_fucks_given
         );
 
