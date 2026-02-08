@@ -3,13 +3,16 @@ use crate::{
     lexicon::Lexicon,
     results::Results,
     terminal_ui::{TerminalUI, QUIT_KEY, RESTART_KEY},
-    word_selector::WordSelector,
+    word_select::select_words,
 };
+use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoroshiro128StarStar;
 use std::{io::stdin, time::Instant};
 use termion::{event::Key, input::TermRead};
 
 pub(crate) struct Engine {
-    word_selector: WordSelector,
+    rng: Xoroshiro128StarStar,
+    lexicon: Lexicon,
     words: Vec<String>,
     terminal_ui: TerminalUI,
     chars_user_input: Vec<char>,
@@ -20,15 +23,26 @@ pub(crate) struct Engine {
 impl Engine {
     pub(crate) fn new(input: Input) -> Self {
         let lexicon = Lexicon::default();
-        let mut word_selector = WordSelector::new(lexicon, input.number_of_words, input.seed);
+        if input.number_of_words > lexicon.len() {
+            panic!(
+                "Requested {} words, but the lexicon only contains {} lines.",
+                input.number_of_words,
+                lexicon.len()
+            );
+        }
 
-        let words = word_selector.select_words_from_lexicon();
+        let mut rng = Xoroshiro128StarStar::seed_from_u64(
+            input.seed.unwrap_or_else(|| rand::thread_rng().gen()),
+        );
+
+        let words = select_words(lexicon.words(), input.number_of_words, &mut rng);
         let terminal_ui = TerminalUI::new(&words);
         let chars_to_type = terminal_ui.text_lines_as_chars();
         let n_chars_to_type = chars_to_type.len();
 
         Self {
-            word_selector,
+            rng,
+            lexicon,
             words,
             chars_user_input: Vec::new(),
             chars_to_type,
@@ -38,7 +52,7 @@ impl Engine {
     }
 
     fn restart(&mut self) {
-        let new_words = self.word_selector.select_words_from_lexicon();
+        let new_words = select_words(self.lexicon.words(), self.words.len(), &mut self.rng);
         self.terminal_ui.reinitialize(&new_words);
         self.words = new_words;
         self.chars_user_input = Vec::new();

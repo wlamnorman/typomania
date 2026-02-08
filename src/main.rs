@@ -4,7 +4,7 @@ mod lexicon;
 mod results;
 mod terminal_ui;
 mod text;
-mod word_selector;
+mod word_select;
 
 use crate::{engine::Engine, input::Input};
 use clap::Parser;
