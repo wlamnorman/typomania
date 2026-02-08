@@ -1,5 +1,6 @@
 mod engine;
 mod input;
+mod lexicon;
 mod results;
 mod terminal_ui;
 mod text;

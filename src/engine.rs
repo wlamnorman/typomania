@@ -1,5 +1,6 @@
 use crate::{
     input::Input,
+    lexicon::Lexicon,
     results::Results,
     terminal_ui::{TerminalUI, QUIT_KEY, RESTART_KEY},
     word_selector::WordSelector,
@@ -18,12 +19,14 @@ pub(crate) struct Engine {
 
 impl Engine {
     pub(crate) fn new(input: Input) -> Self {
-        let mut word_selector =
-            WordSelector::new(input.lexicon_path, input.number_of_words, input.seed);
+        let lexicon = Lexicon::default();
+        let mut word_selector = WordSelector::new(lexicon, input.number_of_words, input.seed);
+
         let words = word_selector.select_words_from_lexicon();
         let terminal_ui = TerminalUI::new(&words);
         let chars_to_type = terminal_ui.text_lines_as_chars();
         let n_chars_to_type = chars_to_type.len();
+
         Self {
             word_selector,
             words,
