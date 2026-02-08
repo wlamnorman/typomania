@@ -1,7 +1,7 @@
 # Hobby project WPM test with a cursed twist
 ![Demo](demo.gif)
 
-# Building
+# Build
 Build the binary using `make install` at the repository root.
 
 # Run
