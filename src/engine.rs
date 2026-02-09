@@ -10,14 +10,34 @@ use rand_xoshiro::Xoroshiro128StarStar;
 use std::{io::stdin, time::Instant};
 use termion::{event::Key, input::TermRead};
 
+pub(crate) struct GameState {
+    input_chars: Vec<char>,
+    target_chars: Vec<char>,
+    results: Results,
+}
+
+impl GameState {
+    pub(crate) fn new(target_chars: Vec<char>) -> Self {
+        let n_chars_to_type = target_chars.len();
+        Self {
+            input_chars: Vec::new(),
+            target_chars,
+            results: Results::new(n_chars_to_type),
+        }
+    }
+
+    pub(crate) fn is_over(&self) -> bool {
+        self.input_chars.len() >= self.target_chars.len()
+    }
+}
+
 pub(crate) struct Engine {
     rng: Xoroshiro128StarStar,
     lexicon: Lexicon,
     words: Vec<String>,
     terminal_ui: TerminalUI,
-    chars_user_input: Vec<char>,
-    chars_to_type: Vec<char>,
-    results: Results,
+
+    state: GameState,
 }
 
 impl Engine {
@@ -38,16 +58,13 @@ impl Engine {
         let words = select_words(lexicon.words(), input.number_of_words, &mut rng);
         let terminal_ui = TerminalUI::new(&words);
         let chars_to_type = terminal_ui.text_lines_as_chars();
-        let n_chars_to_type = chars_to_type.len();
 
         Self {
             rng,
             lexicon,
             words,
-            chars_user_input: Vec::new(),
-            chars_to_type,
             terminal_ui,
-            results: Results::new(n_chars_to_type),
+            state: GameState::new(chars_to_type),
         }
     }
 
@@ -55,19 +72,12 @@ impl Engine {
         let new_words = select_words(self.lexicon.words(), self.words.len(), &mut self.rng);
         self.terminal_ui.reinitialize(&new_words);
         self.words = new_words;
-        self.chars_user_input = Vec::new();
-        self.chars_to_type = self.terminal_ui.text_lines_as_chars();
-
-        let n_chars_to_type = self.chars_to_type.len();
-        self.results = Results::new(n_chars_to_type);
-    }
-
-    fn test_is_over(&self) -> bool {
-        self.chars_user_input.len() >= self.chars_to_type.len()
+        let new_chars_to_type = self.terminal_ui.text_lines_as_chars();
+        self.state = GameState::new(new_chars_to_type);
     }
 
     fn get_correct_char(&self) -> char {
-        self.chars_to_type[self.chars_user_input.len() - 1]
+        self.state.target_chars[self.state.input_chars.len() - 1]
     }
 
     pub(crate) fn run(&mut self) {
@@ -91,12 +101,12 @@ impl Engine {
                             start_time = Some(Instant::now());
                         }
 
-                        self.chars_user_input.push(c);
-                        self.results.n_chars_typed += 1;
-                        if self.test_is_over() {
+                        self.state.input_chars.push(c);
+                        self.state.results.n_chars_typed += 1;
+                        if self.state.is_over() {
                             end_time = Some(Instant::now());
-                            if self.chars_user_input.last() != self.chars_to_type.last() {
-                                self.results.n_typos += 1
+                            if self.state.input_chars.last() != self.state.target_chars.last() {
+                                self.state.results.n_typos += 1
                             }
                             break;
                         }
@@ -105,16 +115,16 @@ impl Engine {
                         if c == correct_char {
                             self.terminal_ui.handle_correct_input(correct_char);
                         } else {
-                            self.results.n_typos += 1;
+                            self.state.results.n_typos += 1;
                             self.terminal_ui.handle_incorrect_input(correct_char);
                         }
                     }
 
                     Key::Backspace => {
-                        if !self.chars_user_input.is_empty() {
+                        if !self.state.input_chars.is_empty() {
                             let correct_char = self.get_correct_char();
-                            self.chars_user_input.pop();
-                            self.results.n_backspaces += 1;
+                            self.state.input_chars.pop();
+                            self.state.results.n_backspaces += 1;
                             self.terminal_ui.handle_backspace(correct_char);
                         }
                     }
@@ -125,13 +135,13 @@ impl Engine {
             }
 
             if let (Some(start), Some(end)) = (start_time, end_time) {
-                self.results.ms_elapsed = (end - start).as_millis();
+                self.state.results.ms_elapsed = (end - start).as_millis();
             }
 
             let should_restart = self.display_results(
                 &stdin,
-                self.chars_to_type.clone(),
-                self.chars_user_input.clone(),
+                self.state.target_chars.clone(),
+                self.state.input_chars.clone(),
             );
             if should_restart {
                 self.restart();
@@ -150,7 +160,7 @@ impl Engine {
         chars_user_input: Vec<char>,
     ) -> bool {
         self.terminal_ui
-            .display_results(&self.results, chars_to_type, chars_user_input);
+            .display_results(&self.state.results, chars_to_type, chars_user_input);
 
         for key in stdin.lock().keys() {
             match key.unwrap() {
